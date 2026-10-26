@@ -2,7 +2,7 @@
 
 **See the sounds that matter.**
 
-**Live demo:** https://driedsandwich.github.io/loudnotice/ · **Demo video:** linked on the project's Devpost page
+**Live demo:** https://driedsandwich.github.io/loudnotice/ · **Demo video:** https://youtu.be/KQ-rILjdjRI
 
 LoudNotice is a free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people. It turns household sounds into large visual alerts with an icon, a name and a color, with optional vibration and system notifications. It is also meant for anyone who wears headphones or is absorbed in something and can miss an alarm, a doorbell or an appliance beep. It was made during NextSpark Hacks 2026.
 
