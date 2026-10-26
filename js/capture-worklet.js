@@ -15,4 +15,4 @@ class CaptureProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('soundsense-capture', CaptureProcessor);
+registerProcessor('loudnotice-capture', CaptureProcessor);

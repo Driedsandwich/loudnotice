@@ -25,11 +25,12 @@ export class GroupMatcher {
       this.windows.set(group.id, history);
       const threshold = Math.max(.05, Math.min(.95, group.threshold + settings.offset));
       const confirmed = history.filter(value => value >= threshold).length >= 2;
-      const urgent = group.urgency >= 2 && score >= threshold + .1;
-      if (settings.enabled[group.id] !== false && (confirmed || urgent) &&
+      // A strong single window is enough for every built-in group.
+      const strong = score >= threshold + .1;
+      if (settings.enabled[group.id] !== false && (confirmed || strong) &&
           now - (this.cooldowns.get(group.id) || 0) >= 6000) {
         this.cooldowns.set(group.id, now);
-        matches.push({ ...group, score: urgent ? score : Math.max(...history) });
+        matches.push({ ...group, score: strong ? score : Math.max(...history) });
       }
     }
     return matches;

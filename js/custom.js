@@ -1,5 +1,6 @@
+import { readStored, writeStored } from './storage.js';
 import { FEATURE_FORMAT } from './classifier.js';
-export const CUSTOM_KEY = 'soundsense.custom.v1';
+export const CUSTOM_KEY = 'loudnotice.custom.v1';
 export function cosine(a, b) {
   let dot = 0, aa = 0, bb = 0;
   for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; aa += a[i] * a[i]; bb += b[i] * b[i]; }
@@ -7,7 +8,7 @@ export function cosine(a, b) {
 }
 export function validateImport(data) {
   if (!data || data.version !== 1 || data.featureFormat !== FEATURE_FORMAT || !Array.isArray(data.sounds) || data.sounds.length > 50) {
-    throw new Error('Unsupported file. Choose a SoundSense v1 export (up to 50 sounds).');
+    throw new Error('Unsupported file. Choose a LoudNotice v1 export (up to 50 sounds).');
   }
   const ids = new Set();
   return data.sounds.map(sound => {
@@ -28,13 +29,13 @@ export class CustomSounds {
   constructor(onWarning) {
     this.onWarning = onWarning; this.sounds = []; this.replays = new Map(); this.cooldowns = new Map();
     try {
-      const saved = localStorage.getItem(CUSTOM_KEY);
+      const saved = readStored(CUSTOM_KEY);
       if (saved) this.sounds = validateImport(JSON.parse(saved));
     } catch { onWarning('Saved taught sounds could not be read. You can import an exported copy.'); }
   }
   data() { return { version: 1, featureFormat: FEATURE_FORMAT, sounds: this.sounds }; }
   save() {
-    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(this.data())); }
+    try { writeStored(CUSTOM_KEY, JSON.stringify(this.data())); }
     catch { this.onWarning('Local storage is unavailable or full. Export taught sounds before closing this page.'); }
   }
   add({ title, icon, color }, examples, replay) {

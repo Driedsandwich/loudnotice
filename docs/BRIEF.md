@@ -1,6 +1,6 @@
-# SoundSense — build brief (hackathon prototype)
+# LoudNotice — build brief (hackathon prototype)
 
-Working name: **SoundSense** (may be renamed). A free, private, browser-only sound alert for Deaf and hard-of-hearing people.
+Name: **LoudNotice**. Subtitle: **See the sounds that matter.** A free, private, browser-only sound alert for Deaf and hard-of-hearing people.
 It listens through the microphone, recognizes important household sounds with Google's YAMNet model running
 in the browser (MediaPipe Tasks Audio), and turns them into a full-screen visual alert with a big icon and label,
 plus vibration on phones. Users can teach it their own sound (e.g. their washing machine's "done" jingle) with a few samples.
@@ -51,7 +51,7 @@ microwave.wav → "Beep, bleep" .74. kettle.wav → "Whistle" .99, "Alarm" .99, 
    - Water running: "Water tap, faucet", "Sink (filling or washing)", "Running water"
    - Clapping (test): "Clapping", "Applause" — lets a judge test by clapping
    Use exact label strings from YAMNet's label list where possible. A group fires when its best label score ≥ threshold in
-   2 of the last 3 windows (urgent groups: 1 window ≥ threshold + 0.1 is enough). Per-group cooldown 6 s.
+   2 of the last 3 windows (all groups: 1 window ≥ threshold + 0.1 is enough). Per-group cooldown 6 s.
    If several groups fire, show the most urgent.
 3. **Alert screen**: full-viewport overlay with the group's color, giant icon and title (e.g. "SMOKE ALARM"), confidence, time,
    "Dismiss" button (Esc too). Urgent: pulse ≤ 2 Hz unless reduced-motion. `navigator.vibrate` pattern on supported devices.
@@ -79,12 +79,16 @@ microwave.wav → "Beep, bleep" .74. kettle.wav → "Whistle" .99, "Alarm" .99, 
 - `index.html`, `styles.css`, `js/app.js` (UI wiring), `js/audio.js` (capture + windows + playback of samples into the pipeline),
   `js/classifier.js` (MediaPipe wrapper, full-score vectors), `js/groups.js`, `js/custom.js` (teach/match, export/import),
   `js/alerts.js` (overlay, vibration, notification, history), `js/spectrum.js`.
-- Expose a small hook for automated tests and demo recording: `window.soundsense = { ready: Promise, playSample(name), events: [] }`
+- Expose a small hook for automated tests and demo recording: `window.loudnotice = { ready: Promise, playSample(name), events: [] }`
   where each alert pushes `{t, group, score, source}` into `events`, and `ready` resolves when the model has loaded.
 - `README.md` (what it is, who it helps, how to run locally, how it works, privacy, limitations, credits, AI-assistance note
   placeholder), `LICENSE` (MIT for the code), `sounds/LICENSE` (CC0 1.0 for the synthesized sounds).
 - `tests/smoke_test.py`: a Playwright (python) script that serves the folder with `http.server`, opens the page headless,
-  waits for `window.soundsense.ready`, calls `playSample` for smoke_alarm, kettle, knock, microwave, doorbell and asserts the
+  waits for `window.loudnotice.ready`, calls `playSample` for smoke_alarm, kettle, knock, microwave, doorbell and asserts the
   expected groups appear in `events`; then teaches `washer_tune` from the sample file 3 times and checks it is recognized
   when played, and that `microwave` is NOT recognized as the taught sound. Print a pass/fail table. (It will be run later on
   another machine; do not try to install browsers.)
+
+## Second revision
+
+Station mode adds fullscreen with viewport fallback, screen wake lock with graceful failure, clock, listening state, latest alert and per-group session counts. The automation API also exposes `station(true/false)` and retains the original alias. Complete v2 setup exports include numeric fingerprints and preferences; v1 sound-only imports remain supported. See README for the current behavior and verification limits.

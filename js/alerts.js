@@ -1,3 +1,4 @@
+import { readStored, writeStored } from './storage.js';
 export function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -9,9 +10,10 @@ export class Alerts {
   constructor(settings, events, onWarning) {
     this.settings = settings; this.events = events; this.onWarning = onWarning;
     this.dialog = document.querySelector('#alert-dialog'); this.history = [];
+    this.awayCounts = new Map();
     this.awaySince = document.hidden || !document.hasFocus() ? Date.now() : null;
     try {
-      const stored = JSON.parse(localStorage.getItem('soundsense.history.v1') || '[]');
+      const stored = JSON.parse(readStored('loudnotice.history.v1') || '[]');
       if (!Array.isArray(stored)) throw new Error();
       this.history = stored.filter(e => e && Number.isFinite(e.t) && Number.isFinite(e.score) && e.score >= 0 && e.score <= 1 &&
         typeof e.title === 'string' && typeof e.icon === 'string' && typeof e.group === 'string' && ['mic', 'sample', 'taught'].includes(e.source)).slice(-200);
@@ -22,23 +24,23 @@ export class Alerts {
     window.addEventListener('focus', () => this.returned());
     document.addEventListener('visibilitychange', () => document.hidden ? this.leave() : this.returned());
     document.querySelector('#clear-history').addEventListener('click', () => {
-      this.history = []; this.persist(); this.render(); document.querySelector('#away-summary').hidden = true;
+      this.history = []; this.awayCounts.clear(); this.persist(); this.render(); document.querySelector('#away-summary').hidden = true;
     });
     document.querySelector('#dismiss-away').addEventListener('click', () => { document.querySelector('#away-summary').hidden = true; });
     this.render();
   }
   persist() {
-    try { localStorage.setItem('soundsense.history.v1', JSON.stringify(this.history)); }
+    try { writeStored('loudnotice.history.v1', JSON.stringify(this.history)); }
     catch { this.onWarning('History cannot be saved in this browser. It is available until you close the page.'); }
   }
   leave() { if (this.awaySince === null) this.awaySince = Date.now(); }
   returned() {
-    if (document.hidden || !document.hasFocus() || this.awaySince === null) return;
-    const counts = new Map();
-    for (const event of this.history.filter(e => e.t >= this.awaySince)) counts.set(event.title, (counts.get(event.title) || 0) + 1);
+    if (document.hidden || this.awaySince === null) return;
+    const counts = this.awayCounts; this.awayCounts = new Map();
     this.awaySince = null;
     if (counts.size) {
-      document.querySelector('#away-text').textContent = [...counts].map(([title, n]) => `${title}: ${n}`).join(' · ');
+      document.querySelector('#away-text').textContent = [...counts.values()].map(({ title, count }) => `${title}: ${count}`).join(' · ');
+      this.dismiss(); // Reveal the return summary instead of leaving a stale alert over it.
       document.querySelector('#away-summary').hidden = false;
     }
   }
@@ -50,6 +52,11 @@ export class Alerts {
       const entry = { t: now, group: match.id, title: match.title, icon: match.icon, score: match.score, source, inputSource };
       this.events.push({ t: now, group: match.id, score: match.score, source });
       this.history.push(entry);
+      if (this.awaySince !== null) {
+        const count = (this.awayCounts.get(entry.group)?.count || 0) + 1;
+        this.awayCounts.set(entry.group, { title: entry.title, count });
+      }
+      this.onEvent?.(entry);
     }
     this.history = this.history.slice(-200); this.persist(); this.render();
     const match = [...matches].sort((a, b) => b.urgency - a.urgency || b.score - a.score)[0];
@@ -66,18 +73,18 @@ export class Alerts {
     document.querySelector('#alert-priority').textContent = match.urgency >= 2 ? 'Urgent sound detected' : 'Sound detected';
     document.querySelector('#alert-meta').textContent = `${Math.round(match.score * 100)}% ${match.id.startsWith('custom-') ? 'similarity' : 'model confidence'} · ${timeFormat.format(now)} · ${inputSource === 'mic' ? 'Microphone' : 'Test sample'}`;
     document.querySelector('#alert-live').textContent = `${match.urgency >= 2 ? 'Urgent: ' : ''}${match.title}. ${Math.round(match.score * 100)} percent.`;
-    document.title = `${match.icon} ${match.title} — SoundSense`;
+    document.title = `${match.icon} ${match.title} — LoudNotice`;
     if (!this.dialog.open) { this.returnFocus = document.activeElement; this.dialog.showModal(); document.querySelector('#dismiss-alert').focus(); }
     if (this.settings.vibration && navigator.vibrate) { try { navigator.vibrate(match.urgency >= 2 ? [250, 150, 250, 150, 500] : [200, 100, 200]); } catch {} }
     if (this.settings.notifications && 'Notification' in window && Notification.permission === 'granted') {
-      try { new Notification(`SoundSense: ${match.title}`, { body: 'A sound may need your attention. Check your surroundings.', tag: 'soundsense-alert', silent: true }); }
+      try { new Notification(`LoudNotice: ${match.title}`, { body: 'A sound may need your attention. Check your surroundings.', tag: 'loudnotice-alert', silent: true }); }
       catch { this.onWarning('System notifications are unavailable here. Visual alerts still work.'); }
     }
   }
   dismiss() {
     this.active = null;
     if (this.dialog.open) this.dialog.close();
-    document.title = 'SoundSense — Make sound visible';
+    document.title = 'LoudNotice — See the sounds that matter.';
     if (navigator.vibrate) { try { navigator.vibrate(0); } catch {} }
     this.returnFocus?.focus();
   }

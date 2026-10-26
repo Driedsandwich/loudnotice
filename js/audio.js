@@ -63,7 +63,7 @@ export class AudioPipeline {
       } catch (error) { this.stop(); this.onError(error); }
     };
     if (this.workletReady) {
-      this.processor = new AudioWorkletNode(this.context, 'soundsense-capture');
+      this.processor = new AudioWorkletNode(this.context, 'loudnotice-capture');
       this.processor.port.onmessage = event => receive(event.data);
     } else {
       this.processor = this.context.createScriptProcessor(2048, 1, 1);

@@ -1,26 +1,31 @@
+import { readStored, writeStored } from './storage.js';
 import { Classifier } from './classifier.js';
 import { AudioPipeline } from './audio.js';
 import { GROUPS, GroupMatcher } from './groups.js';
 import { CustomSounds } from './custom.js';
 import { Alerts, element } from './alerts.js';
 import { drawSpectrum } from './spectrum.js';
+import { Station } from './station.js';
+import { exportSetup, validateSetup } from './setup.js';
 
 const $ = selector => document.querySelector(selector);
 function warn(message) { $('#storage-warning').textContent = message; $('#storage-warning').hidden = false; }
 function showError(error) {
   const messages = { NotAllowedError: 'Microphone permission was denied. Allow it in your browser settings, or try the samples below.', NotFoundError: 'No microphone was found. You can still try the bundled samples.', NotReadableError: 'The microphone is busy or unavailable. Close other apps using it and try again.' };
-  $('#error').textContent = messages[error.name] || error.message || String(error); $('#error').hidden = false;
+  const message = messages[error.name] || error.message || String(error);
+  $('#error').textContent = message; $('#error').hidden = false;
+  if (!$('#station').hidden) { $('#station-error').textContent = message; $('#station-error').hidden = false; }
 }
 function clearError() { $('#error').hidden = true; }
 const settings = { offset: 0, enabled: Object.fromEntries(GROUPS.map(g => [g.id, true])), vibration: true, notifications: false, reducedMotion: false };
 try {
-  const saved = JSON.parse(localStorage.getItem('soundsense.settings.v1') || '{}');
+  const saved = JSON.parse(readStored('loudnotice.settings.v1') || '{}');
   if (typeof saved.offset === 'number' && Number.isFinite(saved.offset)) settings.offset = Math.max(-.2, Math.min(.2, saved.offset));
   for (const key of ['vibration', 'notifications', 'reducedMotion']) if (typeof saved[key] === 'boolean') settings[key] = saved[key];
   for (const group of GROUPS) if (typeof saved.enabled?.[group.id] === 'boolean') settings.enabled[group.id] = saved.enabled[group.id];
 } catch { warn('Saved preferences could not be read. Using the default settings.'); }
 function saveSettings() {
-  try { localStorage.setItem('soundsense.settings.v1', JSON.stringify(settings)); }
+  try { writeStored('loudnotice.settings.v1', JSON.stringify(settings)); }
   catch { warn('Preferences cannot be saved in this browser. They will last for this session.'); }
 }
 const events = [], classifier = new Classifier(), matcher = new GroupMatcher();
@@ -28,6 +33,9 @@ const custom = new CustomSounds(warn), alerts = new Alerts(settings, events, war
 let modelLoaded = false, modelLoading = false, teachingBusy = false, pendingInput = false, inputToken = 0;
 let examples = [], replay = null, stopDrawing = null;
 const audio = new AudioPipeline(processWindow, updateAudioState, showError);
+const station = new Station({ audio, start: startMic, cancelPending: () => { if (pendingInput) stopInput(); },
+  sounds: () => custom.sounds, latest: () => alerts.history.at(-1), dismiss: () => alerts.dismiss() });
+alerts.onEvent = entry => station.record(entry);
 
 function processWindow(samples, sampleRate, source) {
   if (!modelLoaded) return;
@@ -41,6 +49,7 @@ function processWindow(samples, sampleRate, source) {
 }
 function updateControls() {
   const running = Boolean(audio.mode) || pendingInput;
+  $('#enter-station').disabled = teachingBusy || pendingInput;
   $('#start-stop').disabled = !modelLoaded && !running;
   $('#start-text').textContent = pendingInput ? 'Cancel' : audio.mode ? 'Stop listening' : modelLoaded ? 'Start listening' : 'Loading model…';
   $('#start-icon').textContent = running ? '■' : '▶';
@@ -51,6 +60,7 @@ function updateControls() {
   document.querySelectorAll('.custom-test').forEach(button => { button.disabled = !modelLoaded || teachingBusy || pendingInput || Boolean(audio.mode) || !custom.replays.has(button.dataset.id); });
 }
 function updateAudioState(mode, message) {
+  station.state();
   stopDrawing?.(); stopDrawing = null;
   $('#listen-state').classList.toggle('active', Boolean(mode));
   $('#state-text').textContent = mode === 'mic' ? 'Listening live' : mode === 'sample' ? 'Playing sample' : 'Not listening';
@@ -67,7 +77,7 @@ function stopInput() { inputToken++; pendingInput = false; audio.stop(); }
 async function startMic() {
   if (pendingInput) throw new Error('An audio request is already in progress.');
   pendingInput = true; const token = ++inputToken; updateControls();
-  try { await audio.unlock(); await window.soundsense.ready; if (token !== inputToken) return; await audio.startMic(); }
+  try { await audio.unlock(); await window.loudnotice.ready; if (token !== inputToken) return; await audio.startMic(); }
   finally { if (token === inputToken) { pendingInput = false; updateControls(); } }
 }
 async function playSample(name) {
@@ -75,7 +85,7 @@ async function playSample(name) {
   clearError(); alerts.dismiss();
   pendingInput = true; const token = ++inputToken; updateControls();
   try {
-    await audio.unlock(); await window.soundsense.ready;
+    await audio.unlock(); await window.loudnotice.ready;
     const buffer = await audio.sample(name);
     if (token !== inputToken) return;
     pendingInput = false;
@@ -84,7 +94,9 @@ async function playSample(name) {
     await playing;
   } finally { if (token === inputToken) { pendingInput = false; updateControls(); } }
 }
-window.soundsense = { ready: null, playSample, events };
+window.loudnotice = { ready: null, playSample, events, station: enabled => station.set(enabled) };
+// Keep the original automation entry point as the very same object.
+window.soundsense = window.loudnotice;
 function loadModel() {
   if (modelLoading) return;
   modelLoading = true; $('#retry-model').hidden = true; $('#model-state').textContent = 'Downloading YAMNet + MediaPipe. First load may take a moment…';
@@ -94,7 +106,7 @@ function loadModel() {
     modelLoaded = false; $('#model-state').textContent = 'Model download failed. Check your connection and retry.';
     $('#retry-model').hidden = false; $('#start-text').textContent = 'Model unavailable'; showError(new Error(`Recognition could not start: ${error.message}`)); throw error;
   }).finally(() => { modelLoading = false; });
-  window.soundsense.ready = ready; ready.catch(() => {});
+  window.loudnotice.ready = ready; ready.catch(() => {});
 }
 $('#retry-model').addEventListener('click', () => { clearError(); loadModel(); });
 $('#start-stop').addEventListener('click', async () => {
@@ -117,7 +129,7 @@ async function captureExample(kind, file) {
   clearError(); teachingBusy = true; alerts.dismiss(); updateControls();
   $('#teach-progress').textContent = kind === 'mic' ? 'Getting the microphone ready…' : 'Analyzing the example on your device…';
   try {
-    await audio.unlock(); await window.soundsense.ready;
+    await audio.unlock(); await window.loudnotice.ready;
     let samples, sampleRate, buffer;
     if (kind === 'mic') {
       if (audio.mode !== 'mic') await startMic();
@@ -151,7 +163,6 @@ $('#teach-form').addEventListener('submit', event => {
 });
 function renderCustom() {
   const list = $('#custom-list'); list.replaceChildren();
-  $('#export-sounds').disabled = !custom.sounds.length;
   if (!custom.sounds.length) { list.append(element('p', 'custom-empty', 'An alert that feels like home. Your first taught sound will live here.')); return; }
   for (const sound of custom.sounds) {
     const card = element('div', 'custom-item'); card.style.setProperty('--sound-color', sound.color); card.dataset.soundId = sound.id;
@@ -179,8 +190,8 @@ function renderCustom() {
   updateControls();
 }
 $('#export-sounds').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(custom.data(), null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), link = element('a'); link.href = url; link.download = 'soundsense-sounds.json';
+  const blob = new Blob([JSON.stringify(exportSetup(custom, settings), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob), link = element('a'); link.href = url; link.download = 'loudnotice-setup.json';
   document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $('#import-sounds').addEventListener('click', () => $('#import-file').click());
@@ -188,8 +199,21 @@ $('#import-file').addEventListener('change', async event => {
   const file = event.target.files[0]; event.target.value = ''; if (!file) return;
   clearError();
   try {
-    if (file.size > 2 * 1024 * 1024) throw new Error('Choose a SoundSense JSON file smaller than 2 MB.');
-    const count = custom.import(JSON.parse(await file.text())); renderCustom(); $('#teach-progress').textContent = `Imported ${count} sound${count === 1 ? '' : 's'}. Test with the original sound; recordings are not included.`;
+    if (file.size > 2 * 1024 * 1024) throw new Error('Choose a LoudNotice JSON file smaller than 2 MB.');
+    const data = JSON.parse(await file.text());
+    let count;
+    if (data.version === 1) {
+      // Older sound-only exports still merge by ID and leave preferences alone.
+      count = custom.import(data);
+    } else {
+      const restored = validateSetup(data); // Validate the whole file before any mutation.
+      custom.sounds = restored.sounds; custom.replays.clear(); custom.cooldowns.clear();
+      Object.assign(settings, restored.settings); custom.save(); saveSettings();
+      matcher.resetWindows(); matcher.cooldowns.clear(); renderSettings();
+      count = restored.sounds.length;
+    }
+    renderCustom();
+    $('#setup-status').textContent = `Imported ${count} sound${count === 1 ? '' : 's'}${data.version === 2 ? ' and all preferences' : ''}. Test on this device; recordings are not included.`;
   } catch (error) { showError(error); }
 });
 
@@ -212,10 +236,18 @@ $('#vibration').addEventListener('change', () => { settings.vibration = $('#vibr
 $('#reduced-motion').checked = settings.reducedMotion;
 document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion);
 $('#reduced-motion').addEventListener('change', () => { settings.reducedMotion = $('#reduced-motion').checked; document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion); saveSettings(); });
-if (!('Notification' in window)) {
-  settings.notifications = false; $('#notifications').disabled = true; $('#notification-help').textContent = 'Not supported here; visual alerts are always available';
-} else if (Notification.permission !== 'granted') settings.notifications = false;
-$('#notifications').checked = settings.notifications;
+function renderSettings() {
+  $('#sensitivity').value = String(Math.round(-settings.offset * 100)); sensitivityText();
+  for (const group of GROUPS) $(`#enable-${group.id}`).checked = settings.enabled[group.id];
+  $('#vibration').checked = settings.vibration; $('#reduced-motion').checked = settings.reducedMotion;
+  document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion);
+  $('#notifications').checked = settings.notifications;
+  $('#notifications').disabled = !('Notification' in window);
+  $('#notification-help').textContent = !('Notification' in window) ? 'Not supported here; your preference is saved for other devices' :
+    settings.notifications && Notification.permission !== 'granted' ? 'Saved as on. Turn off and on to request permission on this device.' :
+    settings.notifications ? 'Enabled while this page is running' : 'Permission requested only when enabled';
+}
+renderSettings();
 $('#notifications').addEventListener('change', async () => {
   clearError();
   if (!$('#notifications').checked) { settings.notifications = false; saveSettings(); return; }

@@ -1,68 +1,61 @@
-# SoundSense
+# LoudNotice
 
-**Your world. Made visible.** A free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people, made during NextSpark Hacks 2026.
+**See the sounds that matter.**
 
-SoundSense turns microphone input into large visual alerts, optional phone vibration and optional system notifications. Try six included synthesized sounds without granting microphone access, or teach the app your own household sound with three examples.
+LoudNotice is a free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people. It turns household sounds into large visual alerts with an icon, a name and a color, with optional vibration and system notifications. It was made during NextSpark Hacks 2026.
+
+Try the included synthesized sounds without a microphone, teach a household sound with three examples, or give an unused laptop or tablet a new purpose as a room’s sound display. The existing dark dashboard, mint accents, sound timeline and full-screen alerts are shared across these features.
+
+## Station mode
+
+Choose **Enter Station mode** to turn a spare laptop or tablet into an at-a-glance display:
+
+- A large clock, listening status, latest alert and counts for every built-in and taught sound group.
+- Counts start at zero each time you enter and include all detected groups, including test samples. The latest alert can come from earlier history.
+- Listening starts automatically if no input is running. Allow microphone access when asked. An existing microphone or sample session is left running.
+- The page requests the Fullscreen API. If unavailable or denied, the display fills the browser viewport instead.
+- The page requests `navigator.wakeLock.request('screen')`. A small status explains whether the screen can stay awake. It requests the lock again when the page becomes visible; the browser or operating system may still release it.
+- Alerts use the same full-screen notification as the dashboard. **Dismiss** returns to the station. **Esc** or **Exit Station mode** leaves the station and releases its wake lock. An established microphone session continues; use **Stop listening** on the dashboard to stop it. Leaving while microphone startup is pending cancels that startup.
+
+Keep the page visible. Station mode cannot overcome browser suspension, device power policies, a closed lid or a locked screen. If microphone access fails, the station shows an error and its status remains “Not listening.” Exit, fix permissions or retry the model download, then enter again.
+
+## Set up for someone you care about
+
+1. A hearing family member teaches three examples of that home’s sounds and adjusts the enabled groups, sensitivity, vibration and other preferences.
+2. Choose **Export setup** to download one `loudnotice-setup.json` file.
+3. On the recipient’s device, open LoudNotice and choose **Import setup**. Test the actual household sounds together, then enter Station mode.
+
+The version 2 JSON contains an application identifier, feature-format identifier, taught numeric fingerprints and their names/icons/colors, each taught sound’s enable flag and similarity threshold, all built-in group toggles, global sensitivity, vibration, reduced motion and the notification preference. It contains **no recordings or audio samples**, no alert history, and no Station session counts. Export works even when no sounds have been taught.
+
+Import validates the entire setup before changing it, then replaces taught sounds and preferences. Imported controls update immediately and persist in this browser. Browser notification permission is separate: an imported “on” preference does not grant permission or open a permission prompt. If needed, turn that setting off and on on the receiving device. Old version 1 sound-only exports still merge by sound ID and leave preferences alone. Saved data from the previous app name can also be read on the same origin; compatibility copies are written so older smoke scripts can still inspect their storage keys.
 
 ## Run locally
 
-No build step, Node, account or API key is needed:
+No build step, Node, account, API key or backend is required:
 
 ```sh
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000`. For GitHub Pages, publish this directory as the site root; all application assets use relative paths, including the audio worklet. Use HTTPS or localhost for microphone access and AudioWorklet. Opening `index.html` as a `file://` URL will not work.
+Open `http://localhost:8000`. For static hosting such as GitHub Pages, publish this directory as the site root. Microphone access and AudioWorklet require HTTPS or localhost; opening `index.html` directly as a file will not work. A different device accessing an HTTP LAN address does not get the localhost security exception: use HTTPS there.
 
-The first load downloads the pinned MediaPipe runtime / WASM and YAMNet model. Wait for **YAMNet ready**. Internet access to those hosts is required; offline availability is not guaranteed. Download failures show a retry control. Nothing is installed by the app.
+Wait for **YAMNet ready**. The first load downloads the pinned model and runtime. Internet access to those hosts is required; download failures show a retry button, and offline availability is not guaranteed. The application installs nothing.
 
-## Quick demo
+## Try it and test it
 
-1. Click **Smoke alarm**, **Kettle**, **Knocking**, **Microwave** or **Doorbell**. Audio plays through your speakers and enters the same capture / window / classification path as the microphone. Dismiss the full-screen alert with the button or Escape. All matching groups appear in Recent alerts.
-2. In **Teach a sound**, enter “My washer is done”. Click **Use washer sample** three times, waiting for each capture to complete. Click **Save my sound**, then **Test** or the **Washer tune** sample. Each sound has a similarity slider (default 85%).
-3. After at least six seconds, play **Microwave** as a negative comparison. It should not match the taught washer; real-model behavior still needs browser verification.
-4. To use a real sound, capture three distinct 2.5-second microphone examples, or select local audio files (1–15 seconds, at most 12 MB). Avoid mixing different sounds in one set. Reset starts a new set. Capturing a sample/file stops the current live input; microphone capture leaves listening active.
-5. Export taught fingerprints to JSON and import on another device. Import merges sounds by ID (matching IDs update). Imported text is rendered as text, and the entire file is validated before changes are made.
+Use **Smoke alarm**, **Kettle**, **Knocking**, **Microwave** and **Doorbell**. Samples play audibly through the same audio capture, windowing and recognition pipeline as the microphone; their names never choose an alert. Dismiss alerts with the button or Esc. When several groups match, the timeline records all of them while the overlay favors urgency and then score.
 
-## Implemented features
+To teach the demo washer, enter a name, choose **Use washer sample** three times, then **Save my sound**. Use **Test** or **Washer tune** to replay it. For real teaching, record three distinct 2.5-second microphone examples or choose local audio examples of 1–15 seconds (at most 12 MB). The saved sound’s similarity slider defaults to 85%. Example replay audio lasts only for the current session and is cleared by import or reload.
 
-- Start/Stop microphone capture with echo cancellation, noise suppression and automatic gain control disabled; permission and device error feedback. AudioWorklet with ScriptProcessor fallback.
-- One-second windows every 0.5 seconds, live input meter, scrolling spectrogram and top three raw non-silence labels.
-- All twelve requested built-in groups. Two of three windows confirm an ordinary match; urgent groups can also trigger from one score at least 0.1 above threshold. Six-second cooldown per group.
-- Full-viewport icon + text + color alerts, confidence and time, Escape dismissal, focus management with native modal dialog, screen-reader live region, vibration and opt-in notifications. Urgent border pulses once per 2.4 seconds (about 0.42 Hz); reduced-motion preference or override makes it static.
-- Last 200 alerts persisted locally, with mic/sample/taught source labels, clear control and counts for alerts generated while the page was unfocused. History shows all eligible groups; the overlay shows the highest urgency, then highest score. A visible urgent alert is retained over later lower-priority matches until dismissed.
-- Six bundled synthesized samples, played audibly and classified through the real shared pipeline. Sample names never select or fabricate an alert.
-- Three-example custom training, local numeric prototypes, per-sound enable / similarity controls, deletion, session-only Test replay and validated JSON export/import (up to 50 sounds).
-- Global sensitivity for built-ins, individual group toggles, motion / vibration / notification preferences, About and Privacy information.
-- English UI, keyboard controls, large alert text, responsive cards, system-font typography and no external visual assets.
+**While you were away** appears in a prominent banner at the top of the viewport when you return after the page was hidden or unfocused. It summarizes counts per group for alerts actually detected during that absence, including sample alerts. It is also visible in Station mode, and **Got it** dismisses it. The Recent alerts panel explains where to find it. This is not evidence of continuous background listening; suspended pages cannot detect sounds.
 
-## How recognition and teaching work
-
-`AudioClassifier.classify(float32Samples, sampleRate)` uses the verified Tasks Audio API. The classifier requests **maxResults: 521, scoreThreshold: 0**. Each result must contain all 521 named categories; the wrapper orders them lexicographically by `categoryName`, yielding a deterministic full vector. It never uses a top-5 or top-10 approximation for teaching. Silence is excluded from raw-label display and built-in matching, and near-silent frames are gated before matching.
-
-Each example averages the full score vectors of its one-second windows and L2-normalizes that mean. A local radix-2 FFT calculates 32 logarithmically spaced frequency bands (60–8000 Hz) across the clip, applies log-energy compression and L2 normalization. Both parts are weighted 0.5 and concatenated into 553 numbers. The prototype is the mean of three examples. Runtime features use the identical extraction code. A custom match needs cosine similarity at or above its threshold and a margin of at least 0.03 over the second-best enabled custom sound, with a six-second cooldown. With one custom sound, the runner-up score is zero. Built-in sensitivity does not change custom thresholds.
-
-Audio processing uses the browser's actual sample rate. The classifier receives that rate explicitly. Model inference is synchronous on the main thread in this prototype, so slower devices may show UI pauses or delayed alerts.
-
-## Privacy and data
-
-Audio is never uploaded. Microphone buffers and example replay audio exist only in memory; Stop releases microphone tracks. No audio is placed in localStorage or JSON exports. Preferences, the last 200 alerts, and taught numeric fingerprints plus user-chosen labels are stored locally. Clear history / remove taught sounds to remove those records, or clear the site's browser data to erase everything. Stored sound names and times may still be personal information.
-
-Only these external resources are loaded:
-
-- `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.1.1/audio_bundle.mjs`
-- Runtime dependencies in `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.1.1/wasm`
-- `https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite`
-
-The hosting service, jsDelivr and Google receive normal asset requests, including ordinary connection metadata. There are no analytics, advertising, remote audio services, secrets or paid APIs. Notification permission is requested only after the user enables the checkbox. No service worker or push service is used.
-
-## Browser verification
-
-This implementation was created on a machine without a browser or Node. **Browser smoke tests have not been run.** Only the requested Python syntax check was run locally:
+On the development machine, only Python syntax was checked; no browser, Node or browser automation tools were run or installed:
 
 ```sh
-python3 -m py_compile tests/smoke_test.py
+python3 -m py_compile tests/smoke_test.py tools/synth_sounds.py
 ```
+
+The user reported **11/12 PASS for the previous HEAD** on another machine; only the knock fixture failed, with Knock around 33%. **This revised version has not been browser-tested here.**
 
 On a separate machine with Python Playwright and Chromium already available:
 
@@ -72,44 +65,75 @@ python3 tests/smoke_test.py
 python3 tests/smoke_test.py --headed
 ```
 
-The script serves its own localhost site on an available port, loads the real model, plays all five required recognition fixtures, teaches the washer three times through the UI, tests positive/negative recognition, verifies numeric-only persistence, checks the request allowlist and reports uncaught errors. It prints a pass/fail table and returns a nonzero status on any failure. A 6.2-second gap before the negative control prevents cooldown from hiding a false positive. It never installs browsers or packages and does not ask for microphone permission.
+The script starts its own local server, uses the real pinned model, keeps all five recognition checks including knock, teaches and tests the washer, checks complete setup export/import and persistence, checks Station entry/exit through buttons, Esc and the API, checks full-screen or viewport coverage, and checks handled Fullscreen/Wake Lock failures. It also checks the legacy hook, external request allowlist and uncaught browser errors. It uses Chromium’s fake microphone for Station startup; model inference is never mocked. Separate fallback checks deliberately make only the Fullscreen and Wake Lock APIs unavailable or reject. No packages or browsers are installed by the script. Results are printed as a LoudNotice PASS/FAIL table; any failure produces a nonzero exit status.
 
-Manual checks on the judging device:
+On the intended device, also check:
 
-- Permit / deny microphone access; clap, stop, restart, and confirm the browser's microphone indicator turns off after Stop.
-- Check real-world examples and adjust thresholds. The bundled synthesized fixtures are not representative validation data.
-- Check the UI at 320 px and at large text zoom, keyboard focus, Escape, screen-reader alert announcements and system reduced motion.
-- Check device vibration and explicitly enabled system notifications. Support differs by browser; some mobile browsers do not support them.
-- Leave and refocus the page during a sample for the away summary. Locking a phone or backgrounding a browser can suspend processing.
-- Export/import a custom sound, reload, and verify settings/history persist. Replay audio intentionally disappears on reload; imported fingerprints remain usable against live input and samples.
+- Knock detection, other fixtures and real household sounds at the intended distance and noise level.
+- Station mode’s clock, latest alert and per-group counts; alert dismissal; button and Esc exit; screen-awake behavior; return from a hidden tab; microphone denial and disconnection.
+- Export on one device, import on another, then reload. Verify taught sounds, enabled groups, sensitivity, vibration, motion and the notification preference. Grant notification permission separately.
+- The away banner after an alert occurs while hidden/unfocused. A phone’s locked screen may suspend detection.
+- Narrow screens, large text zoom, keyboard focus, screen-reader announcements, reduced motion, vibration and system notifications.
 
-Automation hook:
+The synthesis script now defines knock as **two groups of three knocks over four seconds**. **NumPy is not installed on this development machine, so `sounds/knock.wav` retains its previous version.** On a machine with Python 3 and NumPy, regenerate the knock without changing the other fixtures:
 
-```js
-await window.soundsense.ready;
-await window.soundsense.playSample('smoke_alarm');
-console.table(window.soundsense.events); // { t: epoch milliseconds, group, score, source }
+```sh
+python3 -c "from tools.synth_sounds import knock, write; write('sounds/knock.wav', knock())"
 ```
 
-Valid sample names: `smoke_alarm`, `doorbell`, `knock`, `microwave`, `kettle`, `washer_tune`. Built-in event IDs: `smoke`, `doorbell`, `knock`, `appliance`, `kettle`, `siren`, `baby`, `dog`, `glass`, `phone`, `water`, `clapping`. Taught sound IDs start with `custom-`. Event sources are `mic`, `sample` or `taught`; custom entries use `taught` for either input type. `playSample` resolves after playback and final analysis, but does not auto-dismiss the alert. Automated browsers need audio autoplay enabled; normal users activate audio with a click. `ready` rejects on model-load failure; retry replaces it with a new Promise. Demo events are kept for this page session and are separate from persisted history.
+Automation / recording entry point:
 
-## Planned / incomplete
+```js
+await window.loudnotice.ready;
+await window.loudnotice.playSample('knock');
+console.table(window.loudnotice.events); // { t, group, score, source }
+await window.loudnotice.station(true);
+await window.loudnotice.station(false);
+window.loudnotice === window.soundsense; // true: compatibility alias
+```
 
-- All eight feature sections have implementations; **actual browser execution, fixture accuracy and mobile accessibility/device behavior remain unverified**. A passing smoke test is not claimed.
-- No calibration against real household recordings or evaluation of false-positive / false-negative rates. Broad YAMNet labels overlap: the supplied kettle can also score highly as `Alarm`, which belongs to the urgent smoke group; that urgent overlay can take precedence while the kettle event appears in history. Music-like doorbells and beeps can also be confused.
-- No reliable background / lock-screen monitoring, offline guarantee, or independent worker for model inference. Keep the tab open and visible.
-- Test replay audio is intentionally session-only to keep audio out of storage and export. After reload/import, test with the original sound or capture new examples. Teaching the same bundled file three times is a demo, not evidence of generalization.
-- This is not a medical device, life-safety system, certified alarm or substitute for existing accessibility aids. It may miss sounds or false-alarm. Model confidence and custom similarity are different, uncalibrated scores.
+Sample names: `smoke_alarm`, `doorbell`, `knock`, `microwave`, `kettle`, `washer_tune`. Event sources are `mic`, `sample`, or `taught`; taught sound IDs start with `custom-`. `playSample` resolves after final analysis and leaves any alert open. Browser permission and user-gesture requirements still apply to these hooks. `ready` rejects on model-load failure; retry replaces it with a new promise shared by both names.
 
-## Files and credits
+## How it works
 
-- `js/audio.js`, `js/capture-worklet.js`: shared audio graph, microphone, sample playback and capture.
-- `js/classifier.js`, `js/spectrum.js`: pinned MediaPipe wrapper, all-category scores and local FFT features.
-- `js/groups.js`, `js/custom.js`: group decision rules and custom prototypes.
-- `js/alerts.js`, `js/app.js`: visual / system alerts, history, settings and UI.
-- `sounds/*.wav`: original synthesized fixtures generated by the supplied `tools/synth_sounds.py`; CC0 1.0. The generator requires NumPy only if you choose to regenerate sounds; the application does not.
-- YAMNet / MediaPipe: Google, Apache-2.0. Loaded remotely, not relicensed under the application's MIT license.
-- Code: MIT; see `LICENSE`. Synthesized sounds: see `sounds/LICENSE`.
-- Made during **NextSpark Hacks 2026**. Submission and deadline management are outside this implementation.
+The browser captures mono microphone audio with echo cancellation, noise suppression and automatic gain control disabled. AudioWorklet, with a ScriptProcessor fallback, supplies one-second windows every half-second at the browser’s actual sample rate. Google’s YAMNet model runs locally through MediaPipe Tasks Audio with `maxResults: 521` and `scoreThreshold: 0`. Silence is excluded from built-in matching; near-silent input is gated. The dashboard displays the top three labels, input level and live spectrum.
 
-**AI-assistance note:** OpenAI Codex assisted with implementation, documentation and the smoke-test script. [Before submission: add the human author's name, review details and any additional AI assistance required by the hackathon disclosure rules.]
+Twelve built-in groups cover smoke/fire alarms, doorbells, knocks, appliance beeps, kettle/whistles, sirens, babies crying, dogs barking, glass breaking, phones ringing, running water and clapping. A group’s score is the maximum of its matching labels. **Every built-in group can trigger with one window at least 0.10 above its sensitivity-adjusted threshold**, or with two of the last three windows at/above threshold. Each group has a six-second cooldown. Knock’s balanced threshold is 0.20, so a 0.33 score qualifies immediately. The change does not fabricate detections or change sample-specific behavior.
+
+Taught sounds combine 521 category scores sorted by name with a 32-band frequency profile from a local FFT. The two normalized parts have equal weight, producing 553 numeric features. A prototype averages three examples. Recognition uses cosine similarity, the chosen threshold, a margin of at least 0.03 over the second-best taught sound, and a six-second cooldown. Built-in sensitivity does not change taught thresholds. Up to 50 taught sounds can be saved.
+
+Alerts combine text, icons and color. Urgent alerts have a slow border pulse; reduced-motion preferences make it static. The last 200 alerts are stored locally. Station counts and current absence counts are maintained separately so they are not truncated by the history limit. Model inference is synchronous on the main thread, so older devices may show delays.
+
+## Privacy
+
+Microphone audio is processed locally and never uploaded or saved. Live buffers and teaching replay audio exist only in memory. Stop releases the microphone. Local storage contains preferences, taught numeric fingerprints and labels, and the last 200 alerts. Remove taught sounds, clear history, or clear the site’s browser data to erase saved information. Sound names and alert times may themselves be personal information.
+
+Only the existing three external resource locations are loaded:
+
+- `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.1.1/audio_bundle.mjs`
+- `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.1.1/wasm` (runtime dependencies)
+- `https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite`
+
+The site host, jsDelivr and Google receive ordinary asset download requests and connection metadata. There are no accounts, analytics, advertising, secrets, paid APIs, remote audio services, service workers or push services. Fullscreen, wake lock and notifications use browser APIs, not additional external services.
+
+## Limitations
+
+This is a prototype, not a certified alarm or a replacement for existing accessibility aids. It may miss sounds or false-alarm. There is no validation of real-world false-positive/false-negative rates. Noise, distance, microphones and similar sounds affect results; model confidence and taught similarity are different, uncalibrated scores.
+
+Broad labels overlap: a kettle can also score highly as Alarm and show a smoke-group overlay, while its kettle event is recorded in history. The single-window rule improves brief-sound responsiveness but may also increase false alarms. Synthetic samples and teaching the same file three times demonstrate the pipeline, not generalization to a home.
+
+Station mode does not guarantee uninterrupted listening or prevent device sleep under all conditions. API support varies, older devices may be slow, and background tabs, locked screens and operating-system power controls can interrupt processing. Check the actual device in the actual room.
+
+## Sources and credits
+
+- [Google YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet): AudioSet sound classification model, Apache-2.0.
+- [MediaPipe Tasks Audio](https://ai.google.dev/edge/mediapipe/solutions/audio/audio_classifier/web_js): on-device browser classifier runtime, pinned to 1.1.1; Apache-2.0.
+- Synthesized WAV fixtures: original generated sounds from `tools/synth_sounds.py`, no third-party recordings; CC0 1.0, see `sounds/LICENSE`.
+- Application code: MIT, see `LICENSE`. Model/runtime licenses are separate.
+- Made during NextSpark Hacks 2026.
+
+Main files: `index.html` and `styles.css` provide the interface; `js/app.js` connects the controls; `js/station.js` manages Station mode; `js/setup.js` validates complete setups; `js/audio.js` and `js/capture-worklet.js` handle input; `js/classifier.js` and `js/spectrum.js` extract features; `js/groups.js` and `js/custom.js` recognize sounds; `js/alerts.js` manages notifications/history/away summaries; `js/storage.js` reads older saved data.
+
+## How AI tools were used
+
+TODO: filled in by the author

@@ -65,10 +65,13 @@ def knock_once():
 
 
 def knock():
-    seq = []
-    for gap in (0.28, 0.28, 0.9, 0.28, 0.28):
-        seq += [knock_once(), silence(gap)]
-    return np.concatenate(seq + [knock_once(), silence(0.4)])
+    # Two groups of three wooden knocks; exactly four seconds in total.
+    out = silence(4.0)
+    for onset in (0.20, 0.60, 1.00, 2.20, 2.60, 3.00):
+        hit = knock_once()
+        start = round(onset * SR)
+        out[start:start + len(hit)] += hit
+    return out
 
 
 def microwave():
