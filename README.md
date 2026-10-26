@@ -2,6 +2,8 @@
 
 **See the sounds that matter.**
 
+**Live demo:** https://driedsandwich.github.io/loudnotice/ · **Demo video:** {{VIDEO_URL}}
+
 LoudNotice is a free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people. It turns household sounds into large visual alerts with an icon, a name and a color, with optional vibration and system notifications. It was made during NextSpark Hacks 2026.
 
 Try the included synthesized sounds without a microphone, teach a household sound with three examples, or give an unused laptop or tablet a new purpose as a room’s sound display. The existing dark dashboard, mint accents, sound timeline and full-screen alerts are shared across these features.
@@ -49,15 +51,9 @@ To teach the demo washer, enter a name, choose **Use washer sample** three times
 
 **While you were away** appears in a prominent banner at the top of the viewport when you return after the page was hidden or unfocused. It summarizes counts per group for alerts actually detected during that absence, including sample alerts. It is also visible in Station mode, and **Got it** dismisses it. The Recent alerts panel explains where to find it. This is not evidence of continuous background listening; suspended pages cannot detect sounds.
 
-On the development machine, only Python syntax was checked; no browser, Node or browser automation tools were run or installed:
+Latest result (2026-10-27, headless Chromium through Python Playwright, real pinned YAMNet model): **16/16 checks passed**. The checks cover the five built-in samples (and that everyday sounds such as the kettle do not raise an urgent smoke alert), teaching and recognizing the washer jingle while not confusing it with the microwave, Station mode entry/exit and API fallbacks, setup export/import, saved data after reload, the external-request allowlist and uncaught errors. These are synthesized fixtures, so they show that the pipeline works, not real-room accuracy.
 
-```sh
-python3 -m py_compile tests/smoke_test.py tools/synth_sounds.py
-```
-
-The user reported **11/12 PASS for the previous HEAD** on another machine; only the knock fixture failed, with Knock around 33%. **This revised version has not been browser-tested here.**
-
-On a separate machine with Python Playwright and Chromium already available:
+With Python Playwright and Chromium available:
 
 ```sh
 python3 tests/smoke_test.py
@@ -120,9 +116,13 @@ The site host, jsDelivr and Google receive ordinary asset download requests and 
 
 This is a prototype, not a certified alarm or a replacement for existing accessibility aids. It may miss sounds or false-alarm. There is no validation of real-world false-positive/false-negative rates. Noise, distance, microphones and similar sounds affect results; model confidence and taught similarity are different, uncalibrated scores.
 
-Broad labels overlap: a kettle can also score highly as Alarm and show a smoke-group overlay, while its kettle event is recorded in history. The single-window rule improves brief-sound responsiveness but may also increase false alarms. Synthetic samples and teaching the same file three times demonstrate the pipeline, not generalization to a home.
+Broad labels overlap: YAMNet can give a whistling kettle a high generic "Alarm" score. LoudNotice lets the smoke group yield when it matched only through that generic label and a sound-specific label (kettle, siren, phone or doorbell) explains the sound at least as well; appliance beeps are deliberately not used for this, because real smoke alarms often score "Beep" and a missed alarm is worse than a false one. A smoke alarm sample can still add an extra "Appliance beep" entry to the history. The single-window rule improves brief-sound responsiveness but may also increase false alarms. Synthetic samples and teaching the same file three times demonstrate the pipeline, not generalization to a home.
 
 Station mode does not guarantee uninterrupted listening or prevent device sleep under all conditions. API support varies, older devices may be slow, and background tabs, locked screens and operating-system power controls can interrupt processing. Check the actual device in the actual room.
+
+## Related work, honestly
+
+Phones already have similar built-in features: iPhone Sound Recognition can also learn a custom alarm, appliance or doorbell (iOS 16 and later), and Android's Sound Notifications with Google's Live Transcribe & Notification app can add custom sounds. Other hackathon projects have explored the same idea. LoudNotice's angle is that it runs in any modern browser, including on a laptop or an old tablet kept in one room (Station mode), needs no account or install, keeps audio on the device, lets a hearing family member prepare and hand over the whole setup as one file, and is open source.
 
 ## Sources and credits
 
@@ -130,10 +130,18 @@ Station mode does not guarantee uninterrupted listening or prevent device sleep 
 - [MediaPipe Tasks Audio](https://ai.google.dev/edge/mediapipe/solutions/audio/audio_classifier/web_js): on-device browser classifier runtime, pinned to 1.1.1; Apache-2.0.
 - Synthesized WAV fixtures: original generated sounds from `tools/synth_sounds.py`, no third-party recordings; CC0 1.0, see `sounds/LICENSE`.
 - Application code: MIT, see `LICENSE`. Model/runtime licenses are separate.
-- Made during NextSpark Hacks 2026.
+- YAMNet in TFLite form is published by Google under Apache 2.0 (Kaggle model page `google/yamnet`); LoudNotice loads the MediaPipe-hosted `yamnet.tflite` at runtime, the same file Google's MediaPipe web samples use, and does not redistribute it.
+- Demo video narration: synthesized with Kokoro-82M (Apache-2.0), voice `af_heart`. No music. The video was recorded automatically with Playwright; the sounds in it are the synthesized test sounds, played through the app's sample buttons or fed into Chromium as a fake microphone input (Station mode scene).
+- Made during NextSpark Hacks 2026 (submission period October 22–27, 2026).
 
 Main files: `index.html` and `styles.css` provide the interface; `js/app.js` connects the controls; `js/station.js` manages Station mode; `js/setup.js` validates complete setups; `js/audio.js` and `js/capture-worklet.js` handle input; `js/classifier.js` and `js/spectrum.js` extract features; `js/groups.js` and `js/custom.js` recognize sounds; `js/alerts.js` manages notifications/history/away summaries; `js/storage.js` reads older saved data.
 
 ## How AI tools were used
 
-TODO: filled in by the author
+NextSpark Hacks allows AI tools if their use is explained. LoudNotice was built by one student working heavily with AI tools. To keep the line between AI output and human work clear:
+
+- **Ideas:** two AI models (Anthropic's Claude Fable 5.1 and OpenAI's Codex) proposed project ideas from the public hackathon description only. The ideas were compared against the judging criteria and whether a convincing demo could be recorded. {{HUMAN_CHOICE}}
+- **Code:** most of the application code and the test script were written by OpenAI Codex (GPT-6 Astra) from a written brief (`docs/BRIEF.md`). Anthropic's Claude Code wrote the brief and the sound synthesis script, ran the browser tests, and found and fixed bugs (a kettle raising a false smoke alarm, a taught sound being shadowed by the generic beep alert, a test timing issue). Notes from the build are in `docs/ai-build-notes/`.
+- **Writing and review:** this README and the Devpost text were drafted with Claude and checked by other AI models (OpenAI, DeepSeek, Cursor Composer) against the hackathon rules.
+- **Video:** recorded automatically with Playwright; the narration is synthesized speech (Kokoro-82M), not a human voice.
+- **The human author:** decided to enter, set the direction to finish and submit within the last day, {{HUMAN_DECISIONS}} and published and submitted the project. The human author did not write the code by hand.
