@@ -37,14 +37,20 @@ const station = new Station({ audio, start: startMic, cancelPending: () => { if 
   sounds: () => custom.sounds, latest: () => alerts.history.at(-1), dismiss: () => alerts.dismiss() });
 alerts.onEvent = entry => station.record(entry);
 
+let lastTaughtAt = 0;
 function processWindow(samples, sampleRate, source) {
   if (!modelLoaded) return;
   const result = classifier.window(samples, sampleRate);
   const top = [...result.labels].sort((a, b) => b[1] - a[1]).slice(0, 3);
   $('#top-labels').replaceChildren(...top.map(([label, score]) => element('li', '', `${label} · ${Math.round(score * 100)}%`)));
   if (teachingBusy) return;
-  const builtins = matcher.match(result.level > .003 ? result.labels : new Map(), settings);
+  let builtins = matcher.match(result.level > .003 ? result.labels : new Map(), settings);
   const taught = result.level > .003 ? custom.match(result.feature) : [];
+  // A taught sound is more specific than a generic group (e.g. a washer jingle also scores "Beep").
+  // For a few seconds after it matches, only urgent built-in groups may still alert.
+  const now = Date.now();
+  if (taught.length) lastTaughtAt = now;
+  if (now - lastTaughtAt < 4000) builtins = builtins.filter(match => match.urgency >= 2);
   alerts.fire([...builtins, ...taught], source);
 }
 function updateControls() {
