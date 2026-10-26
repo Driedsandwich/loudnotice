@@ -110,11 +110,14 @@ def main() -> int:
                         f"Expected {expected}; events={json.dumps(detected)}; "
                         f"last labels={page.locator('#top-labels').inner_text()}"
                     )
+                    # A non-urgent everyday sound must not be raised as an urgent alarm.
+                    if expected in ("kettle", "knock", "appliance", "doorbell"):
+                        assert "smoke" not in groups and "siren" not in groups, f"False urgent alert: {groups}"
                     return f"expected {expected}; detected {', '.join(groups)}"
 
                 for name, expected in [
+                    ("kettle", "kettle"),  # first: a fresh smoke cooldown must not hide a false smoke alert
                     ("smoke_alarm", "smoke"),
-                    ("kettle", "kettle"),
                     ("knock", "knock"),
                     ("microwave", "appliance"),
                     ("doorbell", "doorbell"),

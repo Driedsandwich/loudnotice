@@ -14,13 +14,30 @@ export const GROUPS = [
   { id: 'clapping', title: 'Clapping', icon: '👏', color: '#c2da91', urgency: 1, threshold: .35, labels: ['Clapping', 'Applause'] },
 ].map(group => ({ ...group, enabled: true }));
 
+// "Alarm" is a generic YAMNet label: a whistling kettle can score "Alarm" 0.99 next to "Whistle" 0.99.
+// When the smoke group matches only through that generic label and a sound-specific label from one of
+// these groups explains the sound at least as well, the smoke group yields. Appliance "Beep" is left out
+// on purpose: real smoke alarms often score "Beep", and a missed alarm is worse than a false one.
+const GENERIC_LABELS = { smoke: ['Alarm'] };
+const SPECIFIC_RIVALS = ['kettle', 'siren', 'phone', 'doorbell'];
+
+function groupScore(group, labels) {
+  const generic = GENERIC_LABELS[group.id] || [];
+  const specific = Math.max(0, ...group.labels.filter(label => !generic.includes(label)).map(label => labels.get(label) || 0));
+  const general = Math.max(0, ...generic.map(label => labels.get(label) || 0));
+  if (general <= specific) return specific;
+  const rival = Math.max(0, ...GROUPS.filter(other => SPECIFIC_RIVALS.includes(other.id))
+    .flatMap(other => other.labels.map(label => labels.get(label) || 0)));
+  return rival >= general * .9 ? specific : general;
+}
+
 export class GroupMatcher {
   constructor() { this.windows = new Map(); this.cooldowns = new Map(); }
   resetWindows() { this.windows.clear(); }
   match(labels, settings, now = Date.now()) {
     const matches = [];
     for (const group of GROUPS) {
-      const score = Math.max(0, ...group.labels.map(label => labels.get(label) || 0));
+      const score = groupScore(group, labels);
       const history = [...(this.windows.get(group.id) || []), score].slice(-3);
       this.windows.set(group.id, history);
       const threshold = Math.max(.05, Math.min(.95, group.threshold + settings.offset));
