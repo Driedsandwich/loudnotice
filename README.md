@@ -2,9 +2,9 @@
 
 **See the sounds that matter.**
 
-**Live demo:** https://driedsandwich.github.io/loudnotice/ · **Demo video:** {{VIDEO_URL}}
+**Live demo:** https://driedsandwich.github.io/loudnotice/ · **Demo video:** linked on the project's Devpost page
 
-LoudNotice is a free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people. It turns household sounds into large visual alerts with an icon, a name and a color, with optional vibration and system notifications. It was made during NextSpark Hacks 2026.
+LoudNotice is a free, private, browser-only sound alert prototype for Deaf and hard-of-hearing people. It turns household sounds into large visual alerts with an icon, a name and a color, with optional vibration and system notifications. It is also meant for anyone who wears headphones or is absorbed in something and can miss an alarm, a doorbell or an appliance beep. It was made during NextSpark Hacks 2026.
 
 Try the included synthesized sounds without a microphone, teach a household sound with three examples, or give an unused laptop or tablet a new purpose as a room’s sound display. The existing dark dashboard, mint accents, sound timeline and full-screen alerts are shared across these features.
 
@@ -114,7 +114,7 @@ The site host, jsDelivr and Google receive ordinary asset download requests and 
 
 ## Limitations
 
-This is a prototype, not a certified alarm or a replacement for existing accessibility aids. It may miss sounds or false-alarm. There is no validation of real-world false-positive/false-negative rates. Noise, distance, microphones and similar sounds affect results; model confidence and taught similarity are different, uncalibrated scores.
+This is a prototype. It is not a medical device, not a certified smoke or fire alarm, and not a replacement for existing alarms or accessibility aids. It may miss sounds or false-alarm. There is no validation of real-world false-positive/false-negative rates. Noise, distance, microphones and similar sounds affect results; model confidence and taught similarity are different, uncalibrated scores.
 
 Broad labels overlap: YAMNet can give a whistling kettle a high generic "Alarm" score. LoudNotice lets the smoke group yield when it matched only through that generic label and a sound-specific label (kettle, siren, phone or doorbell) explains the sound at least as well; appliance beeps are deliberately not used for this, because real smoke alarms often score "Beep" and a missed alarm is worse than a false one. A smoke alarm sample can still add an extra "Appliance beep" entry to the history. The single-window rule improves brief-sound responsiveness but may also increase false alarms. Synthetic samples and teaching the same file three times demonstrate the pipeline, not generalization to a home.
 
@@ -140,8 +140,8 @@ Main files: `index.html` and `styles.css` provide the interface; `js/app.js` con
 
 NextSpark Hacks allows AI tools if their use is explained. LoudNotice was built by one student working heavily with AI tools. To keep the line between AI output and human work clear:
 
-- **Ideas:** two AI models (Anthropic's Claude Fable 5.1 and OpenAI's Codex) proposed project ideas from the public hackathon description only. The ideas were compared against the judging criteria and whether a convincing demo could be recorded. {{HUMAN_CHOICE}}
+- **Ideas:** two AI models (Anthropic's Claude Fable 5.1 and OpenAI's Codex) proposed project ideas from the public hackathon description only. The ideas were compared against the judging criteria and whether a convincing demo could be recorded. The human author chose LoudNotice from the compared options.
 - **Code:** most of the application code and the test script were written by OpenAI Codex (GPT-6 Astra) from a written brief (`docs/BRIEF.md`). Anthropic's Claude Code wrote the brief and the sound synthesis script, ran the browser tests, and found and fixed bugs (a kettle raising a false smoke alarm, a taught sound being shadowed by the generic beep alert, a test timing issue). Notes from the build are in `docs/ai-build-notes/`.
-- **Writing and review:** this README and the Devpost text were drafted with Claude and checked by other AI models (OpenAI, DeepSeek, Cursor Composer) against the hackathon rules.
+- **Writing and review:** this README and the Devpost text were drafted with Claude and checked against the hackathon rules by other AI models (OpenAI Codex, DeepSeek, Cursor Composer and Mistral).
 - **Video:** recorded automatically with Playwright; the narration is synthesized speech (Kokoro-82M), not a human voice.
-- **The human author:** decided to enter, set the direction to finish and submit within the last day, {{HUMAN_DECISIONS}} and published and submitted the project. The human author did not write the code by hand.
+- **The human author:** decided to enter, pushed to finish and submit within the last day, chose LoudNotice, decided that the repository could be made public by the AI, and uploads the demo video and submits the project on Devpost. The human author did not write the code by hand.
