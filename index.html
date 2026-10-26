@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b141b">
+  <meta name="description" content="SoundSense makes everyday sounds visible. A private, browser-only sound alert prototype.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='22' fill='%2392e0c6'/%3E%3Cpath d='M20 33v14m10-24v34m10-43v52m10-43v34m10-24v14' stroke='%230b141b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <title>SoundSense — Make sound visible</title>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="shell">
+    <header class="site-header">
+      <a class="brand" href="#main" aria-label="SoundSense home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>SoundSense<span class="prototype">BETA</span></a>
+      <nav aria-label="Main navigation"><a href="#teach">Teach a sound</a><a href="#settings">Settings</a><a href="#about">About</a></nav>
+    </header>
+    <main id="main">
+      <section class="intro" aria-labelledby="page-title">
+        <div><p class="eyebrow">A little more awareness. A little more ease.</p><h1 id="page-title">Your world.<br><span>Made visible.</span></h1><p class="intro-copy">Turn everyday sounds into clear visual alerts.<br>Made for Deaf and hard-of-hearing people.</p></div>
+        <div class="privacy-stamp"><span aria-hidden="true">⌾</span><div><strong>On your device. Always.</strong><p>No audio uploads. No account.<br>Just you, and your surroundings.</p></div></div>
+      </section>
+      <div id="error" class="notice error" role="alert" hidden></div>
+      <div id="storage-warning" class="notice" role="status" hidden></div>
+      <div class="notice" id="away-summary" role="status" hidden><div><strong>While you were away</strong><p id="away-text"></p></div><button id="dismiss-away" class="text-button">Got it</button></div>
+      <div class="dashboard">
+        <div class="main-column">
+          <section class="card listen-card" aria-labelledby="listen-title">
+            <div class="card-heading"><div><p class="eyebrow">01 / Listen</p><h2 id="listen-title">A window into your sound.</h2></div><span id="listen-state" class="status-pill"><span class="status-dot"></span><span id="state-text">Not listening</span></span></div>
+            <div class="sound-visual"><canvas id="spectrogram" width="800" height="180" role="img" aria-label="Live scrolling sound frequency visualization"></canvas><div id="visual-caption"><span class="wave-symbol" aria-hidden="true">▂ ▅ ▇ ▃ ▆ ▂</span><span id="visual-text">Your soundscape starts here</span></div><span class="visual-label">LIVE SPECTRUM</span></div>
+            <div class="level-row"><label for="level">Input level</label><meter id="level" min="0" max="1" value="0">Audio level</meter><span aria-hidden="true">◖))</span></div>
+            <div class="listen-actions"><button id="start-stop" class="button primary" disabled><span id="start-icon" aria-hidden="true">▶</span><span id="start-text">Loading model…</span></button><p id="listen-help">Microphone access is requested only when you start.</p></div>
+            <div class="model-line"><span id="model-state" role="status">Preparing on-device recognition…</span><button id="retry-model" class="text-button" hidden>Retry download</button></div>
+            <div class="raw-labels"><span class="eyebrow">What the model hears</span><ol id="top-labels"><li>Waiting for sound</li></ol></div>
+            <p class="safety-note"><span aria-hidden="true">ⓘ</span> May miss sounds or false-alarm. Not a replacement for certified alarms. Keep this tab open; background listening is not guaranteed.</p>
+          </section>
+          <section class="card" aria-labelledby="demo-title">
+            <div class="card-heading"><div><p class="eyebrow">02 / Take a listen</p><h2 id="demo-title">Try it. No mic needed.</h2></div><span class="tiny-tag">JUDGE FRIENDLY</span></div>
+            <p class="section-copy">Play a sound and watch it become an alert. Samples play through your speakers.</p>
+            <div class="sample-grid" id="samples">
+              <button class="sample-button" data-sample="smoke_alarm" disabled><span aria-hidden="true">🔥</span><strong>Smoke alarm</strong><span class="play-label">Play sample ↗</span></button>
+              <button class="sample-button" data-sample="doorbell" disabled><span aria-hidden="true">🔔</span><strong>Doorbell</strong><span class="play-label">Play sample ↗</span></button>
+              <button class="sample-button" data-sample="knock" disabled><span aria-hidden="true">🚪</span><strong>Knocking</strong><span class="play-label">Play sample ↗</span></button>
+              <button class="sample-button" data-sample="microwave" disabled><span aria-hidden="true">⏲️</span><strong>Microwave</strong><span class="play-label">Play sample ↗</span></button>
+              <button class="sample-button" data-sample="kettle" disabled><span aria-hidden="true">🫖</span><strong>Kettle</strong><span class="play-label">Play sample ↗</span></button>
+              <button class="sample-button" data-sample="washer_tune" disabled><span aria-hidden="true">🧺</span><strong>Washer tune</strong><span class="play-label">Teach it below ↓</span></button>
+            </div>
+            <p class="caption">Synthesized test sounds (generated by tools/synth_sounds.py, CC0)</p>
+          </section>
+        </div>
+        <aside class="card history-card" aria-labelledby="history-title">
+          <div class="card-heading"><div><p class="eyebrow">Your sound timeline</p><h2 id="history-title">Recent alerts <span class="count" id="history-count">0</span></h2></div><button id="clear-history" class="text-button">Clear</button></div>
+          <p class="section-copy">A record of the moments that matter.</p><ol id="history-list" class="history-list"></ol>
+          <div class="history-foot"><span aria-hidden="true">◷</span> Last 200 alerts · saved on this device</div>
+        </aside>
+      </div>
+      <section class="card teach-card" id="teach" aria-labelledby="teach-title">
+        <div class="card-heading"><div><p class="eyebrow">03 / Make it personal</p><h2 id="teach-title">Every home has its own sounds.</h2></div><span class="tiny-tag">3 EXAMPLES. ONE NEW ALERT.</span></div>
+        <p class="section-copy">Your washing machine's little jingle. That particular door chime. Teach SoundSense what matters to you.</p>
+        <div class="teach-layout">
+          <form id="teach-form">
+            <div class="field-row"><label class="name-field">Sound name<input id="teach-name" type="text" maxlength="60" required placeholder="e.g. My washer is done" autocomplete="off"></label><label>Emoji<input id="teach-icon" type="text" maxlength="16" required value="🧺" aria-label="Sound emoji"></label><label>Color<input id="teach-color" type="color" value="#b4a1fa"></label></div>
+            <div class="example-steps" aria-label="Captured examples"><span id="example-1">1 <span>Capture</span></span><span id="example-2">2 <span>Capture</span></span><span id="example-3">3 <span>Capture</span></span></div>
+            <div class="capture-actions"><button id="capture-mic" type="button" class="button secondary" disabled>Record 2.5 seconds</button><button id="capture-demo" type="button" class="button secondary" disabled>Use washer sample</button></div>
+            <label class="file-label">Or choose a local audio example (1–15 seconds)<input id="capture-file" type="file" accept="audio/*,.wav" disabled></label>
+            <p id="teach-progress" class="helper" role="status">Capture three examples of the same sound. Nothing is uploaded.</p>
+            <div class="form-footer"><button id="save-sound" class="button primary" type="submit" disabled>Save my sound</button><button id="reset-teach" type="button" class="text-button">Reset examples</button></div>
+          </form>
+          <div class="your-sounds"><div class="card-heading"><h3>Your sounds</h3><div class="inline-actions"><button id="export-sounds" class="text-button">Export</button><button id="import-sounds" class="text-button">Import</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div><p class="helper">Only numeric sound fingerprints and labels are saved. Test audio stays in memory for this session.</p><div id="custom-list"></div></div>
+        </div>
+      </section>
+      <section class="card" id="settings" aria-labelledby="settings-title">
+        <div class="card-heading"><div><p class="eyebrow">04 / Your preferences</p><h2 id="settings-title">A little fine-tuning.</h2></div><span class="tiny-tag">SAVED LOCALLY</span></div>
+        <div class="settings-layout"><div class="preferences">
+          <label class="slider-label" for="sensitivity"><strong>Sound sensitivity</strong><output id="sensitivity-value" for="sensitivity">Balanced</output></label><input id="sensitivity" type="range" min="-20" max="20" value="0" step="1"><div class="range-labels"><span>Fewer alerts</span><span>More alerts</span></div><p class="helper">Adjusts all built-in thresholds. Taught sounds have their own similarity slider.</p>
+          <label class="toggle-row"><span><strong>Vibration</strong><small>A gentle tap, where supported</small></span><input id="vibration" type="checkbox" checked></label>
+          <label class="toggle-row"><span><strong>System notifications</strong><small id="notification-help">Permission requested only when enabled</small></span><input id="notifications" type="checkbox"></label>
+          <label class="toggle-row"><span><strong>Reduce motion</strong><small>Use solid alerts; system preference is always respected</small></span><input id="reduced-motion" type="checkbox"></label>
+        </div><div><h3>Sounds to look out for</h3><p class="helper">Icon + text + color, every time. Urgent sounds get priority.</p><div id="group-settings" class="group-grid"></div></div></div>
+      </section>
+      <section class="about-panel" id="about" aria-labelledby="about-title"><div><p class="eyebrow">Built with care, in the browser</p><h2 id="about-title">Awareness, with privacy built in.</h2><p>SoundSense uses Google's YAMNet through MediaPipe Tasks Audio to recognize sounds on your device. It checks a one-second window every half-second, groups related labels, and turns matches into visual alerts. Taught sounds compare a 521-category fingerprint and a 32-band frequency profile with your examples.</p></div><div><h3>Your audio stays yours.</h3><p>Microphone audio is never uploaded or saved. Taught fingerprints, labels, preferences and alert history are stored in this browser. The model and runtime download from Google and jsDelivr; those hosts receive ordinary download requests. No accounts, trackers, or paid APIs.</p><h3>A helpful prototype, not a safety device.</h3><p>Noise, distance and similar sounds can cause missed or mistaken alerts. Confidence is a model score, not a calibrated probability. Keep certified alarms and other accessibility aids. Background tabs and locked screens may pause audio. Notifications do not keep listening alive.</p></div></section>
+    </main>
+    <footer><a class="brand footer-brand" href="#main">SoundSense<span class="small-wave" aria-hidden="true">▂▅▇▃</span></a><p>Made during NextSpark Hacks 2026<br>YAMNet &amp; MediaPipe · Apache-2.0 / Synthesized sounds · CC0 / Code · MIT</p><span class="footer-note">Every sound has a story.</span></footer>
+  </div>
+  <dialog id="alert-dialog" aria-labelledby="alert-title" aria-describedby="alert-meta alert-disclaimer"><div class="alert-inner"><p id="alert-priority" class="eyebrow">Sound detected</p><div id="alert-icon" aria-hidden="true">🔔</div><h2 id="alert-title">Sound detected</h2><p id="alert-meta"></p><button id="dismiss-alert" class="button">Dismiss <kbd>Esc</kbd></button><p id="alert-disclaimer">Check your surroundings. Recognition can be mistaken.</p></div><div id="alert-live" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div></dialog>
+  <noscript><p class="notice">SoundSense needs JavaScript to recognize sounds locally.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
